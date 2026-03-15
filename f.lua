@@ -1,15 +1,3 @@
-print([[ 
-
-
-      __     __         _            
-      \ \   / /__  _ __| |_ _____  __
-       \ \ / / _ \| '__| __/ _ \ \/ /
-        \ V / (_) | |  | ||  __/>  < 
-         \_/ \___/|_|   \__\___/_/\_\
-         Invented by Vortex Softwares                              
-
-]])
-
 local Config = {
 	SilentAimRemote = game:GetService("ReplicatedStorage")["8WX"]:FindFirstChild("75721fbe-0361-4584-8feb-db2f118fa345"),
 	TeaserShootRemoteEvent = game:GetService("ReplicatedStorage")["8WX"]:FindFirstChild("9b91a7ac-035c-4b97-9a85-9c36725e1796"),
