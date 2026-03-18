@@ -8,8 +8,32 @@ local UserInputService = game:GetService("UserInputService")
 local VirtualInputManager = game:GetService("VirtualInputManager")
 local HttpService = game:GetService("HttpService")
 
-local Player = Players.LocalPlayer
-local LocalPlayer = Player
+local player = Players.LocalPlayer
+local LocalPlayer = player
+
+-- HIER DEINEN PASTEBIN LINK EINFÜGEN!
+local SCRIPT_URL = "https://pastebin.com/raw/DEIN_PASTEBIN_LINK"
+
+-- Kamera Setup
+local camera = workspace.CurrentCamera
+camera.CameraType = Enum.CameraType.Scriptable
+camera.FieldOfView = 120
+
+local HEIGHT_OFFSET = 4
+local BACK_OFFSET = 5
+
+-- Kamera Lock
+local function lockCamera()
+    local character = player.Character
+    if character and character:FindFirstChild("HumanoidRootPart") then
+        local rootPart = character.HumanoidRootPart
+        local cameraPosition = rootPart.Position - rootPart.CFrame.LookVector * BACK_OFFSET + Vector3.new(0, HEIGHT_OFFSET, 0)
+        local lookAtPosition = rootPart.Position + rootPart.CFrame.LookVector * 10 + Vector3.new(0, 1.5, 0)
+        camera.CFrame = CFrame.new(cameraPosition, lookAtPosition)
+    end
+end
+
+RunService.RenderStepped:Connect(lockCamera)
 
 -- Remote Events
 local RemoteEvents = {
@@ -30,20 +54,24 @@ local Config = {
     vehicleSpeed = 200,
     playerSpeed = 28,
     policeCheckRange = 40,
-    lowHealthThreshold = 35
+    lowHealthThreshold = 35,
+    checkInterval = 300 -- 5 Minuten in Sekunden
 }
 
 local State = {
+    autorobToggle = true,
+    autoSellToggle = true,
     collected = {},
     teleportActive = false,
-    fastPlayerTeleport = true
+    fastPlayerTeleport = true,
+    autofarmRunning = false
 }
 
--- Warte auf Character
-local Character = Player.Character or Player.CharacterAdded:Wait()
+-- Character Setup
+local Character = player.Character or player.CharacterAdded:Wait()
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
--- Locations
+-- Locations (NUR BANK)
 local Locations = {
     start = CFrame.new(-1305.168, 51.356, 3391.559),
     bank = CFrame.new(-1271.356, 5.836, 3195.081),
@@ -55,16 +83,110 @@ local Locations = {
     }
 }
 
--- HIER KANNST DU DEN SAVE PLACE ÄNDERN:
-local SavePlace = CFrame.new(-1305.168, 51.356, 3391.559) -- Aktuell Startposition
+-- Auto Re-apply Setup
+local function setupAutoReapply()
+    local function queueScript()
+        local scriptToQueue = 'loadstring(game:HttpGet("' .. SCRIPT_URL .. '"))()'
+        
+        if syn and syn.queue_on_teleport then
+            syn.queue_on_teleport(scriptToQueue)
+            return true
+        elseif queue_on_teleport then
+            queue_on_teleport(scriptToQueue)
+            return true
+        elseif queueonteleport then
+            queueonteleport(scriptToQueue)
+            return true
+        end
+        return false
+    end
+    
+    -- Bei Spielerverlust
+    Players.PlayerRemoving:Connect(function(plr)
+        if plr == player then
+            queueScript()
+        end
+    end)
+    
+    -- Bei Fehlern
+    game:GetService("CoreGui").DescendantAdded:Connect(function(descendant)
+        if descendant.Name == "ErrorPrompt" or descendant.Name == "ErrorTitle" then
+            task.wait(0.5)
+            queueScript()
+            TeleportService:Teleport(game.PlaceId, LocalPlayer)
+        end
+    end)
+end
+
+setupAutoReapply()
 
 -- Hilfsfunktionen
-local function sendNotification(title, text)
+local function sendNotification(title, content)
     game:GetService("StarterGui"):SetCore("SendNotification", {
         Title = title,
-        Text = text,
-        Duration = 3
+        Text = content,
+        Duration = 5
     })
+end
+
+-- Server Hop Funktion
+local function hopToRandomServer()
+    sendNotification("Server Hop", "Suche neuen Server...")
+    
+    local success, response = pcall(function()
+        return game:HttpGet("https://api.emergency-hamburg.com/public/servers")
+    end)
+    
+    if not success then
+        sendNotification("Fehler", "Keine Server gefunden")
+        return false
+    end
+    
+    local success2, servers = pcall(function()
+        return HttpService:JSONDecode(response)
+    end)
+    
+    if not success2 or not servers or #servers == 0 then
+        sendNotification("Fehler", "Keine Server verfügbar")
+        return false
+    end
+    
+    -- Verfügbare Server filtern
+    local availableServers = {}
+    for _, server in ipairs(servers) do
+        if server.currentPlayers < server.maxPlayers then
+            table.insert(availableServers, server)
+        end
+    end
+    
+    if #availableServers == 0 then
+        sendNotification("Fehler", "Keine Server mit freien Plätzen")
+        return false
+    end
+    
+    -- Zufälligen Server wählen
+    local randomServer = availableServers[math.random(1, #availableServers)]
+    
+    sendNotification("Server Hop", "Joine: " .. randomServer.serverName)
+    
+    -- Script für neuen Server queuen
+    local scriptToQueue = 'loadstring(game:HttpGet("' .. SCRIPT_URL .. '"))()'
+    
+    if syn and syn.queue_on_teleport then
+        syn.queue_on_teleport(scriptToQueue)
+    elseif queue_on_teleport then
+        queue_on_teleport(scriptToQueue)
+    elseif queueonteleport then
+        queueonteleport(scriptToQueue)
+    end
+    
+    -- Teleportieren
+    local placeId = game.PlaceId
+    local serverId = randomServer.privateServerId
+    
+    TeleportService:TeleportToPrivateServer(placeId, serverId, {LocalPlayer})
+    
+    return true
 end
 
 local function isPoliceNearby()
@@ -72,9 +194,10 @@ local function isPoliceNearby()
     if not policeTeam then return false end
     
     for _, plr in ipairs(Players:GetPlayers()) do
-        if plr ~= Player and plr.Team == policeTeam and plr.Character then
+        if plr ~= player and plr.Team == policeTeam and plr.Character then
             local policeHRP = plr.Character:FindFirstChild("HumanoidRootPart")
             if policeHRP and HumanoidRootPart and (policeHRP.Position - HumanoidRootPart.Position).Magnitude <= Config.policeCheckRange then
+                sendNotification("Polizei in der Nähe", "Breche ab!")
                 return true
             end
         end
@@ -89,7 +212,10 @@ end
 
 local function lootVisibleMeshParts(folder)
     if not folder then return end
-    if isPoliceNearby() or isPlayerHurt() then return end
+    
+    if isPoliceNearby() or isPlayerHurt() then
+        return
+    end
     
     for _, meshPart in ipairs(folder:GetDescendants()) do
         if meshPart:IsA("MeshPart") and meshPart.Transparency == 0 and not State.collected[meshPart] then
@@ -113,8 +239,8 @@ local function lootVisibleMeshParts(folder)
 end
 
 local function inCar()
-    local v = workspace.Vehicles:FindFirstChild(Player.Name)
-    local h = Player.Character and Player.Character:FindFirstChildOfClass("Humanoid")
+    local v = workspace.Vehicles:FindFirstChild(player.Name)
+    local h = player.Character and player.Character:FindFirstChildOfClass("Humanoid")
     if v and h and not h.SeatPart then 
         local s = v:FindFirstChild("DriveSeat")
         if s then 
@@ -125,8 +251,8 @@ local function inCar()
 end
 
 local function ensurePlayerInVehicle()
-    local vehicle = workspace.Vehicles and workspace.Vehicles:FindFirstChild(Player.Name)
-    local character = Player.Character
+    local vehicle = workspace.Vehicles and workspace.Vehicles:FindFirstChild(player.Name)
+    local character = player.Character
     if vehicle and character then
         local humanoid = character:FindFirstChildWhichIsA("Humanoid")
         local driveSeat = vehicle:FindFirstChild("DriveSeat")
@@ -159,7 +285,7 @@ local function SpawnGrenade()
 end
 
 local function JumpOut()
-    local character = Player.Character
+    local character = player.Character
     if character then
         local humanoid = character:FindFirstChild("Humanoid")
         if humanoid and humanoid.SeatPart then
@@ -168,40 +294,8 @@ local function JumpOut()
     end
 end
 
-local function hasGrenade()
-    local function checkContainer(container)
-        for _, item in ipairs(container:GetChildren()) do
-            if item:IsA("Tool") and item.Name == "Grenade" then
-                return true
-            end
-        end
-        return false
-    end
-    return checkContainer(Player.Backpack) or checkContainer(Player.Character)
-end
-
-local function MoveToDealer()
-    local dealers = workspace:FindFirstChild("Dealers")
-    if not dealers then return end
-
-    local closest, shortest = nil, math.huge
-    for _, dealer in pairs(dealers:GetChildren()) do
-        if dealer:FindFirstChild("Head") then
-            local dist = (Character.HumanoidRootPart.Position - dealer.Head.Position).Magnitude
-            if dist < shortest then
-                shortest = dist
-                closest = dealer.Head
-            end
-        end
-    end
-
-    if closest then
-        tweenTo(closest.Position + Vector3.new(0, 5, 0))
-    end
-end
-
 local function plrTween(destination)
-    local char = Player.Character
+    local char = player.Character
     if not char or not char.PrimaryPart then return end
 
     if State.fastPlayerTeleport then
@@ -237,8 +331,10 @@ local function tweenTo(destination)
         return
     end
 
-    local v = workspace.Vehicles:FindFirstChild(Player.Name)
-    if not v or not v.PrimaryPart then return end
+    local v = workspace.Vehicles:FindFirstChild(player.Name)
+    if not v or not v.PrimaryPart then 
+        return 
+    end
     
     local distance = (v.PrimaryPart.Position - targetCF.Position).Magnitude
     
@@ -284,38 +380,109 @@ local function tweenTo(destination)
     tweenModel(v, targetCF, (height / totalDist) * totalDur)
 end
 
--- Haupt-Funktion: Einmal rauben und zum Save Place
-local function robOnceAndGoToSave()
-    sendNotification("Starte Raubzug", "Einmal rauben und dann zum Save Place")
+local function MoveToDealer()
+    local vehicle = workspace.Vehicles:FindFirstChild(player.Name)
+    if not vehicle then
+        sendNotification("Fehler", "Kein Fahrzeug gefunden")
+        return
+    end
+
+    local dealers = workspace:FindFirstChild("Dealers")
+    if not dealers then
+        sendNotification("Fehler", "Keine Dealer gefunden")
+        return
+    end
+
+    local closest, shortest = nil, math.huge
+    for _, dealer in pairs(dealers:GetChildren()) do
+        if dealer:FindFirstChild("Head") then
+            local dist = (Character.HumanoidRootPart.Position - dealer.Head.Position).Magnitude
+            if dist < shortest then
+                shortest = dist
+                closest = dealer.Head
+            end
+        end
+    end
+
+    if not closest then
+        sendNotification("Fehler", "Kein Dealer in Reichweite")
+        return
+    end
+
+    local destination1 = closest.Position + Vector3.new(0, 5, 0)
+    tweenTo(destination1)
+end
+
+local function hasGrenade()
+    local function checkContainer(container)
+        for _, item in ipairs(container:GetChildren()) do
+            if item:IsA("Tool") and item.Name == "Grenade" then
+                return true
+            end
+        end
+        return false
+    end
+    return checkContainer(player.Backpack) or checkContainer(player.Character)
+end
+
+-- Fahrzeug automatisch abschließen
+local function lockVehicle()
+    local vehicle = workspace:FindFirstChild("Vehicles") and workspace.Vehicles:FindFirstChild(player.Name)
+    if vehicle then
+        vehicle:SetAttribute("Locked", true)
+    end
+end
+
+task.spawn(function()
+    task.wait(2)
+    lockVehicle()
+    while task.wait(10) do
+        lockVehicle()
+    end
+end)
+
+-- Hauptfunktion: NUR BANK RAUBEN
+local function robBank()
+    sendNotification("Bank Raub", "Starte Bank Überfall...")
     
     -- Prüfe ob verhaftet
-    local team = Player.Team
-    if team and team.Name == "Prisoner" then
+    local team = player.Team
+    local teamName = team and team.Name or "None"
+
+    if teamName == "Prisoner" then
         sendNotification("Verhaftet", "Warte auf Freilassung...")
         repeat
             task.wait(5)
-            team = Player.Team
-        until team.Name ~= "Prisoner"
+            team = player.Team
+            teamName = team and team.Name or "None"
+        until teamName ~= "Prisoner"
     end
     
     -- Zum Startpunkt
     ensurePlayerInVehicle()
-    task.wait(0.5)
+    task.wait(.5)
     clickAtCoordinates(0.5, 0.9)
-    task.wait(0.5)
+    task.wait(.5)
     tweenTo(Locations.start)
     
     -- Prüfe Bank-Status
-    local bankLight = Workspace.Robberies.BankRobbery.LightGreen.Light
-    local bankLight2 = Workspace.Robberies.BankRobbery.LightRed.Light
+    local bankLight = nil
+    local bankLight2 = nil
     
-    if bankLight2.Enabled == false and bankLight.Enabled == true then
+    pcall(function()
+        bankLight = Workspace.Robberies.BankRobbery.LightGreen.Light
+        bankLight2 = Workspace.Robberies.BankRobbery.LightRed.Light
+    end)
+    
+    -- Bank Überfall
+    if bankLight2 and bankLight and bankLight2.Enabled == false and bankLight.Enabled == true then
         clickAtCoordinates(0.5, 0.9)
-        sendNotification("Bank offen", "Starte Überfall")
+        sendNotification("Bank ist offen", "Starte Bank Überfall")
         
         -- Granaten besorgen falls nötig
         ensurePlayerInVehicle()
         if not hasGrenade() then
+            ensurePlayerInVehicle()
             MoveToDealer()
             task.wait(0.5)
             local args = {"Grenade", "Dealer"}
@@ -331,31 +498,31 @@ local function robOnceAndGoToSave()
         
         -- Granate werfen
         plrTween(Vector3.new(-1242.367919921875, 7.749999046325684, 3144.705322265625))
-        task.wait(0.5)
-        RemoteEvents.equip:FireServer({"Grenade"})
-        task.wait(0.5)
-        
-        if Player.Character:FindFirstChild("Grenade") then
+        task.wait(.5)
+        local args = {"Grenade"}
+        RemoteEvents.equip:FireServer(unpack(args))
+        task.wait(.5)
+        local tool = player.Character:FindFirstChild("Grenade")
+        if tool then
             SpawnGrenade()
         end
-        
         plrTween(Vector3.new(-1246.291015625, 7.749999046325684, 3120.8505859375))
         task.wait(2.9)
         
         -- Beute einsammeln
         local bankRobberyFolder = Workspace.Robberies.BankRobbery
+        
         for _, position in ipairs(Locations.bankCollectPositions) do
             if isPoliceNearby() then 
                 ensurePlayerInVehicle()
                 break 
             end
-            
             if Character and Character.PrimaryPart then
                 Character:SetPrimaryPartCFrame(CFrame.new(position))
             end
             
-            local startTime = tick()
-            while tick() - startTime < 4.5 do
+            local collectStartTime = tick()
+            while tick() - collectStartTime < 4.5 do
                 if isPoliceNearby() then 
                     ensurePlayerInVehicle()
                     break 
@@ -365,82 +532,81 @@ local function robOnceAndGoToSave()
             end
         end
         
-        ensurePlayerInVehicle()
+        ensurePlayerInVehicle() 
         
         -- Verkaufen
-        task.wait(0.5)
+        task.wait(.5)
         MoveToDealer()
-        task.wait(0.5)
+        task.wait(.5)
         MoveToDealer()
-        task.wait(0.5)
-        
+        task.wait(.5)
         local args = {"Gold", "Dealer"}
         RemoteEvents.sell:FireServer(unpack(args))
         RemoteEvents.sell:FireServer(unpack(args))
         RemoteEvents.sell:FireServer(unpack(args))
-        task.wait(0.5)
+        task.wait(.5)
         
-        -- **ZUM SAVE PLACE GEHEN**
-        sendNotification("Raub fertig", "Gehe zum Save Place")
-        ensurePlayerInVehicle()
-        tweenTo(SavePlace)
-        sendNotification("Angekommen", "Am Save Place")
+        sendNotification("Bank Raub abgeschlossen", "Nächster Check in 5 Minuten")
         
     else
-        sendNotification("Bank geschlossen", "Kein Raub möglich")
-        -- Trotzdem zum Save Place gehen
-        ensurePlayerInVehicle()
-        tweenTo(SavePlace)
-        sendNotification("Angekommen", "Am Save Place (Bank war zu)")
+        sendNotification("Bank geschlossen", "Warte 5 Minuten und versuche neuen Server")
     end
 end
 
--- Auto Lock Vehicle
-task.spawn(function()
-    task.wait(2)
-    local function lockVehicle()
-        local vehicle = workspace:FindFirstChild("Vehicles") and workspace.Vehicles:FindFirstChild(Player.Name)
-        if vehicle then
-            vehicle:SetAttribute("Locked", true)
+-- Haupt-Autofarm Funktion (NUR BANK)
+local function startAutofarm()
+    if State.autofarmRunning then return end
+    State.autofarmRunning = true
+    
+    sendNotification("Bank Autofarm gestartet", "Starte mit Bank Überfällen...")
+    
+    -- Hauptschleife
+    task.spawn(function()
+        while State.autofarmRunning do
+            -- Bank rauben
+            robBank()
+            
+            if not State.autofarmRunning then break end
+            
+            -- 5 Minuten warten
+            sendNotification("Bank Autofarm", "Nächster Check in 5 Minuten...")
+            local waitTime = Config.checkInterval
+            while waitTime > 0 and State.autofarmRunning do
+                task.wait(1)
+                waitTime = waitTime - 1
+            end
+            
+            -- Nach 5 Minuten Server Hop
+            if State.autofarmRunning then
+                sendNotification("Bank Autofarm", "5 Minuten vorbei - Server Hop...")
+                task.wait(2)
+                hopToRandomServer()
+                return
+            end
         end
-    end
-    lockVehicle()
-    while task.wait(10) do
-        lockVehicle()
-    end
-end)
-
--- Kamera-Sperre (wie im Original)
-local camera = workspace.CurrentCamera
-camera.CameraType = Enum.CameraType.Scriptable
-camera.FieldOfView = 120
-
-local HEIGHT_OFFSET = 4
-local BACK_OFFSET = 5
-
-local function lockCamera()
-    if Character and Character:FindFirstChild("HumanoidRootPart") then
-        local rootPart = Character.HumanoidRootPart
-        local cameraPosition = rootPart.Position - rootPart.CFrame.LookVector * BACK_OFFSET + Vector3.new(0, HEIGHT_OFFSET, 0)
-        local lookAtPosition = rootPart.Position + rootPart.CFrame.LookVector * 10 + Vector3.new(0, 1.5, 0)
-        camera.CFrame = CFrame.new(cameraPosition, lookAtPosition)
-    end
+        
+        State.autofarmRunning = false
+        sendNotification("Bank Autofarm gestoppt", "Farm-Schleife beendet")
+    end)
 end
 
-RunService.RenderStepped:Connect(lockCamera)
-
-Player.CharacterAdded:Connect(function(char)
+-- Character Added Event
+player.CharacterAdded:Connect(function(char)
     Character = char
     HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 end)
 
--- **HIER STARTET DER RAUB SOFORT (NUR EINMAL)**
-task.wait(2) -- Kurze Wartezeit für Stabilität
-robOnceAndGoToSave()
+-- AUTO-START: Starte Autofarm sofort (NUR BANK)
+task.wait(3) -- Kurze Wartezeit für Stabilität
+startAutofarm()
 
--- Optional: Nochmal rauben mit "R" Taste
+-- Mit "R" Taste manuell neu starten
 UserInputService.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.R then
-        robOnceAndGoToSave()
+        if State.autofarmRunning then
+            State.autofarmRunning = false
+            task.wait(1)
+        end
+        startAutofarm()
     end
 end)
