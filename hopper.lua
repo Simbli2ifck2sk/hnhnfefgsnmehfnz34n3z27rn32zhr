@@ -1,9 +1,16 @@
 -- =================================================================
+-- ANTI DOUBLE EXECUTE
+-- =================================================================
+if getgenv().HopperLoaded then return end
+getgenv().HopperLoaded = true
+
+-- =================================================================
 -- EINSTELLUNGEN
 -- =================================================================
-local SCRIPT_URL = "https://raw.githubusercontent.com/Simbli2ifck2sk/hnhnfefgsnmehfnz34n3z27rn32zhr/main/WORKING.lua"
+local HOPPER_URL = "https://raw.githubusercontent.com/Simbli2ifck2sk/hnhnfefgsnmehfnz34n3z27rn32zhr/main/hopper.lua"
+local MAIN_SCRIPT = "https://raw.githubusercontent.com/Simbli2ifck2sk/hnhnfefgsnmehfnz34n3z27rn32zhr/main/WORKING.lua"
 
-local WAIT_BEFORE_HOP = math.random(50, 60) -- leicht randomisiert
+local WAIT_BEFORE_HOP = math.random(50, 60)
 local RETRY_DELAY = 5
 local AFTER_HOP_DELAY = 10
 
@@ -21,15 +28,15 @@ local queue = queue_on_teleport
     or (fluxus and fluxus.queue_on_teleport)
 
 -- =================================================================
--- FUNKTION: SCRIPT LADEN
+-- MAIN SCRIPT LADEN
 -- =================================================================
 local function runMainScript()
     local success, content = pcall(function()
-        return game:HttpGet(SCRIPT_URL)
+        return game:HttpGet(MAIN_SCRIPT)
     end)
 
     if not success or not content then
-        warn("❌ Script konnte nicht geladen werden!")
+        warn("❌ Main Script konnte nicht geladen werden!")
         return
     end
 
@@ -40,11 +47,11 @@ local function runMainScript()
     end
 
     task.spawn(func)
-    print("✅ Hauptscript gestartet.")
+    print("✅ Main Script gestartet.")
 end
 
 -- =================================================================
--- FUNKTION: SERVER HOP
+-- SERVER HOP
 -- =================================================================
 local function hopToRandomServer()
     while true do
@@ -71,19 +78,18 @@ local function hopToRandomServer()
                 end
 
                 if #servers > 0 then
-                    -- random server (stealth)
                     local targetServerId = servers[math.random(1, #servers)]
 
-                    -- queue für nächsten server
+                    -- Queue → startet Hopper wieder im nächsten Server
                     if queue then
                         queue([[
                             repeat task.wait() until game:IsLoaded()
                             task.wait(]] .. AFTER_HOP_DELAY .. [[)
-                            loadstring(game:HttpGet("]] .. SCRIPT_URL .. [["))()
+                            loadstring(game:HttpGet("]] .. HOPPER_URL .. [["))()
                         ]])
                     end
 
-                    print("🚀 Teleporting...")
+                    print("🚀 Teleportiere...")
 
                     local ok, err = pcall(function()
                         TeleportService:TeleportToPlaceInstance(
@@ -94,7 +100,7 @@ local function hopToRandomServer()
                     end)
 
                     if ok then
-                        return -- WICHTIG: beendet loop
+                        return
                     else
                         warn("❌ Teleport Fehler:", err)
                     end
@@ -103,7 +109,7 @@ local function hopToRandomServer()
         end
 
         print("🔁 Retry in " .. RETRY_DELAY .. "s...")
-        task.wait(RETRY_DELAY + math.random()) -- mini random delay
+        task.wait(RETRY_DELAY + math.random())
     end
 end
 
