@@ -58,7 +58,7 @@ local Locations = {
 }
 
 -- HIER KANNST DU DEN SAVE PLACE ÄNDERN:
-local SavePlace = CFrame.new(920.23, 308.25, -685.86) -- Aktuell Startposition
+local SavePlace = CFrame.new(152.25, 5.20, 2224.75) -- Aktuell Startposition
 
 -- Hilfsfunktionen
 local function sendNotification(title, text)
