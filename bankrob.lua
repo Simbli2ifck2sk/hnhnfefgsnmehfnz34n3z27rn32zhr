@@ -30,12 +30,10 @@ local Config = {
     vehicleSpeed = 200,
     playerSpeed = 28,
     policeCheckRange = 40,
-    lowHealthThreshold = 35,
-    checkInterval = 300 -- 5 Minuten
+    lowHealthThreshold = 35
 }
 
 local State = {
-    autorobRunning = false,
     collected = {},
     teleportActive = false,
     fastPlayerTeleport = true
@@ -57,8 +55,8 @@ local Locations = {
     }
 }
 
--- Save Place (kannst du ändern)
-local SavePlace = CFrame.new(-1305.168, 51.356, 3391.559)
+-- HIER KANNST DU DEN SAVE PLACE ÄNDERN:
+local SavePlace = CFrame.new(-1305.168, 51.356, 3391.559) -- Aktuell Startposition
 
 -- Hilfsfunktionen
 local function sendNotification(title, text)
@@ -286,125 +284,114 @@ local function tweenTo(destination)
     tweenModel(v, targetCF, (height / totalDist) * totalDur)
 end
 
--- Haupt-Autofarm Funktion
-local function startAutofarm()
-    if State.autorobRunning then return end
-    State.autorobRunning = true
+-- Haupt-Funktion: Einmal rauben und zum Save Place
+local function robOnceAndGoToSave()
+    sendNotification("Starte Raubzug", "Einmal rauben und dann zum Save Place")
     
-    sendNotification("Autofarm gestartet", "Bank only Modus")
+    -- Prüfe ob verhaftet
+    local team = Player.Team
+    if team and team.Name == "Prisoner" then
+        sendNotification("Verhaftet", "Warte auf Freilassung...")
+        repeat
+            task.wait(5)
+            team = Player.Team
+        until team.Name ~= "Prisoner"
+    end
     
-    while State.autorobRunning do
-        -- Prüfe ob verhaftet
-        local team = Player.Team
-        if team and team.Name == "Prisoner" then
-            sendNotification("Verhaftet", "Warte auf Freilassung...")
-            repeat
-                task.wait(5)
-                team = Player.Team
-            until team.Name ~= "Prisoner" or not State.autorobRunning
+    -- Zum Startpunkt
+    ensurePlayerInVehicle()
+    task.wait(0.5)
+    clickAtCoordinates(0.5, 0.9)
+    task.wait(0.5)
+    tweenTo(Locations.start)
+    
+    -- Prüfe Bank-Status
+    local bankLight = Workspace.Robberies.BankRobbery.LightGreen.Light
+    local bankLight2 = Workspace.Robberies.BankRobbery.LightRed.Light
+    
+    if bankLight2.Enabled == false and bankLight.Enabled == true then
+        clickAtCoordinates(0.5, 0.9)
+        sendNotification("Bank offen", "Starte Überfall")
+        
+        -- Granaten besorgen falls nötig
+        ensurePlayerInVehicle()
+        if not hasGrenade() then
+            MoveToDealer()
+            task.wait(0.5)
+            local args = {"Grenade", "Dealer"}
+            RemoteEvents.buy:FireServer(unpack(args))
+            task.wait(0.5)
         end
         
-        if not State.autorobRunning then break end
+        -- Zur Bank
+        tweenTo(Locations.bank)
+        tweenTo(Locations.bank)
+        JumpOut()
+        task.wait(1.5)
         
-        -- Zum Startpunkt
-        ensurePlayerInVehicle()
+        -- Granate werfen
+        plrTween(Vector3.new(-1242.367919921875, 7.749999046325684, 3144.705322265625))
         task.wait(0.5)
-        clickAtCoordinates(0.5, 0.9)
+        RemoteEvents.equip:FireServer({"Grenade"})
         task.wait(0.5)
-        tweenTo(Locations.start)
         
-        -- Prüfe Bank-Status
-        local bankLight = Workspace.Robberies.BankRobbery.LightGreen.Light
-        local bankLight2 = Workspace.Robberies.BankRobbery.LightRed.Light
+        if Player.Character:FindFirstChild("Grenade") then
+            SpawnGrenade()
+        end
         
-        if bankLight2.Enabled == false and bankLight.Enabled == true then
-            clickAtCoordinates(0.5, 0.9)
-            sendNotification("Bank offen", "Starte Überfall")
-            
-            -- Granaten besorgen falls nötig
-            ensurePlayerInVehicle()
-            if not hasGrenade() then
-                MoveToDealer()
-                task.wait(0.5)
-                local args = {"Grenade", "Dealer"}
-                RemoteEvents.buy:FireServer(unpack(args))
-                task.wait(0.5)
+        plrTween(Vector3.new(-1246.291015625, 7.749999046325684, 3120.8505859375))
+        task.wait(2.9)
+        
+        -- Beute einsammeln
+        local bankRobberyFolder = Workspace.Robberies.BankRobbery
+        for _, position in ipairs(Locations.bankCollectPositions) do
+            if isPoliceNearby() then 
+                ensurePlayerInVehicle()
+                break 
             end
             
-            -- Zur Bank
-            tweenTo(Locations.bank)
-            tweenTo(Locations.bank)
-            JumpOut()
-            task.wait(1.5)
-            
-            -- Granate werfen
-            plrTween(Vector3.new(-1242.367919921875, 7.749999046325684, 3144.705322265625))
-            task.wait(0.5)
-            RemoteEvents.equip:FireServer({"Grenade"})
-            task.wait(0.5)
-            
-            if Player.Character:FindFirstChild("Grenade") then
-                SpawnGrenade()
+            if Character and Character.PrimaryPart then
+                Character:SetPrimaryPartCFrame(CFrame.new(position))
             end
             
-            plrTween(Vector3.new(-1246.291015625, 7.749999046325684, 3120.8505859375))
-            task.wait(2.9)
-            
-            -- Beute einsammeln
-            local bankRobberyFolder = Workspace.Robberies.BankRobbery
-            for _, position in ipairs(Locations.bankCollectPositions) do
+            local startTime = tick()
+            while tick() - startTime < 4.5 do
                 if isPoliceNearby() then 
                     ensurePlayerInVehicle()
                     break 
                 end
-                
-                if Character and Character.PrimaryPart then
-                    Character:SetPrimaryPartCFrame(CFrame.new(position))
-                end
-                
-                local startTime = tick()
-                while tick() - startTime < 4.5 do
-                    if isPoliceNearby() then 
-                        ensurePlayerInVehicle()
-                        break 
-                    end
-                    lootVisibleMeshParts(bankRobberyFolder)
-                    task.wait(0.5)
-                end
+                lootVisibleMeshParts(bankRobberyFolder)
+                task.wait(0.5)
             end
-            
-            ensurePlayerInVehicle()
-            
-            -- Verkaufen
-            task.wait(0.5)
-            MoveToDealer()
-            task.wait(0.5)
-            MoveToDealer()
-            task.wait(0.5)
-            
-            local args = {"Gold", "Dealer"}
-            RemoteEvents.sell:FireServer(unpack(args))
-            RemoteEvents.sell:FireServer(unpack(args))
-            RemoteEvents.sell:FireServer(unpack(args))
-            task.wait(0.5)
-            
-            -- Zum Save Place
-            sendNotification("Bankraub fertig", "Gehe zum Save Place")
-            ensurePlayerInVehicle()
-            tweenTo(SavePlace)
-            
-        else
-            sendNotification("Bank geschlossen", "Warte 5 Minuten...")
         end
         
-        -- 5 Minuten warten
-        if State.autorobRunning then
-            local waitTime = Config.checkInterval
-            while waitTime > 0 and State.autorobRunning do
-                task.wait(1)
-                waitTime = waitTime - 1
-            end
-        end
+        ensurePlayerInVehicle()
+        
+        -- Verkaufen
+        task.wait(0.5)
+        MoveToDealer()
+        task.wait(0.5)
+        MoveToDealer()
+        task.wait(0.5)
+        
+        local args = {"Gold", "Dealer"}
+        RemoteEvents.sell:FireServer(unpack(args))
+        RemoteEvents.sell:FireServer(unpack(args))
+        RemoteEvents.sell:FireServer(unpack(args))
+        task.wait(0.5)
+        
+        -- **ZUM SAVE PLACE GEHEN**
+        sendNotification("Raub fertig", "Gehe zum Save Place")
+        ensurePlayerInVehicle()
+        tweenTo(SavePlace)
+        sendNotification("Angekommen", "Am Save Place")
+        
+    else
+        sendNotification("Bank geschlossen", "Kein Raub möglich")
+        -- Trotzdem zum Save Place gehen
+        ensurePlayerInVehicle()
+        tweenTo(SavePlace)
+        sendNotification("Angekommen", "Am Save Place (Bank war zu)")
     end
 end
 
@@ -447,14 +434,13 @@ Player.CharacterAdded:Connect(function(char)
     HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 end)
 
--- **HIER STARTET AUTOFARM SOFORT**
+-- **HIER STARTET DER RAUB SOFORT (NUR EINMAL)**
 task.wait(2) -- Kurze Wartezeit für Stabilität
-startAutofarm()
+robOnceAndGoToSave()
 
--- Optional: Stopp-Funktion per Tastatur (z.B. "P" drücken zum Stoppen)
+-- Optional: Nochmal rauben mit "R" Taste
 UserInputService.InputBegan:Connect(function(input)
-    if input.KeyCode == Enum.KeyCode.P then
-        State.autorobRunning = false
-        sendNotification("Autofarm gestoppt", "P wurde gedrückt")
+    if input.KeyCode == Enum.KeyCode.R then
+        robOnceAndGoToSave()
     end
 end)
