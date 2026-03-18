@@ -43,14 +43,10 @@ local State = {
 local Character = Player.Character or Player.CharacterAdded:Wait()
 local HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 
--- Locations - MIT DEINEN NEUEN POSITIONEN
+-- Locations
 local Locations = {
     start = CFrame.new(-1305.168, 51.356, 3391.559),
     bank = CFrame.new(-1271.356, 5.836, 3195.081),
-    -- DEINE NEUEN POSITIONEN:
-    carDropPoint = Vector3.new(-1227.71, 7.85, 3163.12),  -- Hier parkt das Auto
-    playerTpPoint = Vector3.new(-1250.10, 7.72, 3122.34), -- Hier wird Spieler hingeteleportiert
-    -- Alte Bank-Sammelpositionen
     bankCollectPositions = {
         Vector3.new(-1251.5240478515625, 7.723498821258545, 3127.464111328125),
         Vector3.new(-1247.194091796875, 7.723498821258545, 3102.603271484375),
@@ -60,7 +56,7 @@ local Locations = {
 }
 
 -- HIER KANNST DU DEN SAVE PLACE ÄNDERN:
-local SavePlace = CFrame.new(-1305.168, 51.356, 3391.559)
+local SavePlace = CFrame.new(-1305.168, 51.356, 3391.559) -- Aktuell Startposition
 
 -- Hilfsfunktionen
 local function sendNotification(title, text)
@@ -288,25 +284,9 @@ local function tweenTo(destination)
     tweenModel(v, targetCF, (height / totalDist) * totalDur)
 end
 
--- Funktion: Bomben kaufen (wie im Beispiel)
-local function buyGrenades()
-    sendNotification("Kaufe Bomben", "Gehe zum Dealer...")
-    
-    ensurePlayerInVehicle()
-    MoveToDealer()
-    task.wait(0.5)
-    
-    -- Bomben kaufen (wie im Beispiel)
-    local args = {"Grenade", "Dealer"}
-    RemoteEvents.buy:FireServer(unpack(args))
-    task.wait(0.5)
-    
-    sendNotification("Bomben gekauft", "Fahre weiter...")
-end
-
--- Haupt-Funktion: Einmal rauben mit Bombenkauf
+-- Haupt-Funktion: Einmal rauben und zum Save Place
 local function robOnceAndGoToSave()
-    sendNotification("Starte Raubzug", "Mit Bombenkauf und neuen Positionen")
+    sendNotification("Starte Raubzug", "Einmal rauben und dann zum Save Place")
     
     -- Prüfe ob verhaftet
     local team = Player.Team
@@ -333,25 +313,25 @@ local function robOnceAndGoToSave()
         clickAtCoordinates(0.5, 0.9)
         sendNotification("Bank offen", "Starte Überfall")
         
-        -- **BOMBEN KAUFEN** (wie im Beispiel)
+        -- Granaten besorgen falls nötig
+        ensurePlayerInVehicle()
         if not hasGrenade() then
-            buyGrenades()
+            MoveToDealer()
+            task.wait(0.5)
+            local args = {"Grenade", "Dealer"}
+            RemoteEvents.buy:FireServer(unpack(args))
+            task.wait(0.5)
         end
         
-        -- Auto zum Car Drop Point fahren
-        sendNotification("Auto parken", "Fahre zu: X=-1227.71, Y=7.85, Z=3163.12")
-        tweenTo(Locations.carDropPoint)
-        task.wait(1)
-        
-        -- Spieler aus Auto nehmen und zur Sammelposition teleportieren
+        -- Zur Bank
+        tweenTo(Locations.bank)
+        tweenTo(Locations.bank)
         JumpOut()
-        task.wait(0.5)
+        task.wait(1.5)
         
-        sendNotification("Spieler teleportieren", "Zu: X=-1250.10, Y=7.72, Z=3122.34")
-        plrTween(Locations.playerTpPoint)
+        -- Granate werfen
+        plrTween(Vector3.new(-1242.367919921875, 7.749999046325684, 3144.705322265625))
         task.wait(0.5)
-        
-        -- Granate ausrüsten und werfen
         RemoteEvents.equip:FireServer({"Grenade"})
         task.wait(0.5)
         
@@ -359,9 +339,10 @@ local function robOnceAndGoToSave()
             SpawnGrenade()
         end
         
+        plrTween(Vector3.new(-1246.291015625, 7.749999046325684, 3120.8505859375))
         task.wait(2.9)
         
-        -- Beute einsammeln (mit den alten Positionen)
+        -- Beute einsammeln
         local bankRobberyFolder = Workspace.Robberies.BankRobbery
         for _, position in ipairs(Locations.bankCollectPositions) do
             if isPoliceNearby() then 
@@ -384,11 +365,6 @@ local function robOnceAndGoToSave()
             end
         end
         
-        -- Zurück zum Auto (Car Drop Point)
-        if Character and Character.PrimaryPart then
-            plrTween(Locations.carDropPoint)
-        end
-        
         ensurePlayerInVehicle()
         
         -- Verkaufen
@@ -404,7 +380,7 @@ local function robOnceAndGoToSave()
         RemoteEvents.sell:FireServer(unpack(args))
         task.wait(0.5)
         
-        -- Zum Save Place gehen
+        -- **ZUM SAVE PLACE GEHEN**
         sendNotification("Raub fertig", "Gehe zum Save Place")
         ensurePlayerInVehicle()
         tweenTo(SavePlace)
@@ -434,7 +410,7 @@ task.spawn(function()
     end
 end)
 
--- Kamera-Sperre
+-- Kamera-Sperre (wie im Original)
 local camera = workspace.CurrentCamera
 camera.CameraType = Enum.CameraType.Scriptable
 camera.FieldOfView = 120
@@ -458,11 +434,11 @@ Player.CharacterAdded:Connect(function(char)
     HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 end)
 
--- **HIER STARTET DER RAUB SOFORT**
-task.wait(2)
+-- **HIER STARTET DER RAUB SOFORT (NUR EINMAL)**
+task.wait(2) -- Kurze Wartezeit für Stabilität
 robOnceAndGoToSave()
 
--- Nochmal rauben mit "R" Taste
+-- Optional: Nochmal rauben mit "R" Taste
 UserInputService.InputBegan:Connect(function(input)
     if input.KeyCode == Enum.KeyCode.R then
         robOnceAndGoToSave()
