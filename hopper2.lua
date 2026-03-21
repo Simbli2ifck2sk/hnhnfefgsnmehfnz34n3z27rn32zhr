@@ -10,7 +10,7 @@ getgenv().HopperLoaded = true
 local HOPPER_URL = "https://raw.githubusercontent.com/Simbli2ifck2sk/hnhnfefgsnmehfnz34n3z27rn32zhr/main/hopper2.lua"
 local MAIN_SCRIPT = "https://raw.githubusercontent.com/Simbli2ifck2sk/hnhnfefgsnmehfnz34n3z27rn32zhr/main/WORKING2.lua"
 
-local WAIT_BEFORE_HOP = 0  -- Changed to 0 for immediate hop (or keep math.random if you want delay)
+local WAIT_BEFORE_HOP = 39 -- Changed to 0 for immediate hop (or keep math.random if you want delay)
 local RETRY_DELAY = 5
 local AFTER_HOP_DELAY = 10
 
