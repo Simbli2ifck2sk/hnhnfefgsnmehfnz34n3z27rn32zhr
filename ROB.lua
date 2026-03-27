@@ -46,7 +46,7 @@ local Config = {
     HOP_DELAY = 2,             -- Warten vor Server-Hop
     COLLECT_DURATION = 1,    -- Sammelzeit pro Position
     -- Optionen
-    FAST_PLAYER_TELEPORT = true,   -- Teleport statt Tween für Spieler
+    FAST_PLAYER_TELEPORT = false,   -- Teleport statt Tween für Spieler
     LOCK_VEHICLE = true,            -- Fahrzeug automatisch abschließen
 }
 
