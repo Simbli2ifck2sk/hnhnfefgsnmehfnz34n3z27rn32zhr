@@ -39,12 +39,12 @@ local Config = {
     VEHICLE_SPEED = 100,
     RANGE = 200,
     PROXIMITY_PROMPT_TIME = 2.5,
-    POLICE_CHECK_RANGE = 40,
+    POLICE_CHECK_RANGE = 70,
     LOW_HEALTH_THRESHOLD = 35,
     -- Wartezeiten
     START_DELAY = 5,           -- Warten nach Skriptstart
     HOP_DELAY = 2,             -- Warten vor Server-Hop
-    COLLECT_DURATION = 4.5,    -- Sammelzeit pro Position
+    COLLECT_DURATION = 1,    -- Sammelzeit pro Position
     -- Optionen
     FAST_PLAYER_TELEPORT = true,   -- Teleport statt Tween für Spieler
     LOCK_VEHICLE = true,            -- Fahrzeug automatisch abschließen
