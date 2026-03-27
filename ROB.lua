@@ -37,7 +37,7 @@ local Config = {
     CAMERA_BACK_OFFSET = 5,
     -- Bewegungs- und Interaktions-Einstellungen
     PLAYER_SPEED = 28,
-    VEHICLE_SPEED = 100,
+    VEHICLE_SPEED = 55,
     RANGE = 200,
     PROXIMITY_PROMPT_TIME = 2.5,
     POLICE_CHECK_RANGE = 70,
