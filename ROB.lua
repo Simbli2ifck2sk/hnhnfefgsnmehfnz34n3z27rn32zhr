@@ -28,7 +28,7 @@ local LocalPlayer = player
 -- ==============================
 local Config = {
     -- Skript-URL für Auto-Reapply (leer lassen, wenn nicht benötigt)
-    SCRIPT_URL = "",  -- z.B. "https://pastebin.com/raw/abc123"
+    SCRIPT_URL = "https://raw.githubusercontent.com/Simbli2ifck2sk/hnhnfefgsnmehfnz34n3z27rn32zhr/main/ROB.lua",  -- z.B. "https://pastebin.com/raw/abc123"
     -- Job-IDs URL
     JOB_IDS_URL = "https://raw.githubusercontent.com/Simbli2ifck2sk/hnhnfefgsnmehfnz34n3z27rn32zhr/main/100",
     -- Kamera-Einstellungen
