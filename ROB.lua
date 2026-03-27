@@ -1,5 +1,6 @@
 --[[
     Verbesserter Bank-Autofarm + Server-Hop
+    - Pro Server nur 1 Granate kaufen
     - Keine 5-Minuten-Warte
     - Automatischer Serverwechsel nach jedem Raub (Bank offen oder geschlossen)
     - Robuste Fehlerbehandlung
@@ -44,7 +45,7 @@ local Config = {
     -- Wartezeiten
     START_DELAY = 5,           -- Warten nach Skriptstart
     HOP_DELAY = 2,             -- Warten vor Server-Hop
-    COLLECT_DURATION = 1,    -- Sammelzeit pro Position
+    COLLECT_DURATION = 1,      -- Sammelzeit pro Position
     -- Optionen
     FAST_PLAYER_TELEPORT = false,   -- Teleport statt Tween für Spieler
     LOCK_VEHICLE = true,            -- Fahrzeug automatisch abschließen
@@ -64,6 +65,7 @@ local State = {
     collected = {},
     autofarmRunning = false,
     characterLoaded = false,
+    grenadeBought = false,   -- <-- NEU: nur eine Granate pro Server
 }
 
 local Character = nil
@@ -396,12 +398,14 @@ local function robBank()
     if bankOpen then
         sendNotification("Bank ist offen", "Starte Überfall", 3)
 
-        -- Granate besorgen, falls nötig
-        if not hasGrenade() then
+        -- Granate besorgen, falls nötig (maximal 1 pro Server)
+        if not hasGrenade() and not State.grenadeBought then
             if moveToDealer() then
                 task.wait(0.5)
                 RemoteEvents.buy:FireServer("Grenade", "Dealer")
-                task.wait(0.5)
+                State.grenadeBought = true   -- <-- NEU: nur einmal kaufen
+                sendNotification("Granate gekauft", "Warte auf Erhalt...", 3)
+                task.wait(1)                 -- Kurze Warte, damit Granate erscheint
             end
         end
 
@@ -412,13 +416,17 @@ local function robBank()
         jumpOut()
         task.wait(1)
 
-        -- Granate werfen
-        teleportPlayer(Vector3.new(-1242.367919921875, 7.749999046325684, 3144.705322265625))
-        task.wait(0.5)
-        RemoteEvents.equip:FireServer("Grenade")
-        task.wait(0.5)
-        local grenade = Character and Character:FindFirstChild("Grenade")
-        if grenade then spawnGrenade() end
+        -- Granate werfen (nur wenn vorhanden)
+        if hasGrenade() then
+            teleportPlayer(Vector3.new(-1242.367919921875, 7.749999046325684, 3144.705322265625))
+            task.wait(0.5)
+            RemoteEvents.equip:FireServer("Grenade")
+            task.wait(0.5)
+            local grenade = Character and Character:FindFirstChild("Grenade")
+            if grenade then spawnGrenade() end
+        else
+            sendNotification("Keine Granate", "Überspringe Granatenwurf", 3)
+        end
         teleportPlayer(Vector3.new(-1246.291015625, 7.749999046325684, 3120.8505859375))
         task.wait(2.9)
 
