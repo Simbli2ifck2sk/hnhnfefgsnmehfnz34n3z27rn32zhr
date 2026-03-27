@@ -12,7 +12,7 @@ local player = Players.LocalPlayer
 local LocalPlayer = player
 
 -- HIER DEINEN PASTEBIN LINK EINFÜGEN!
-local SCRIPT_URL = "https://pastebin.com/raw/DEIN_PASTEBIN_LINK"
+local SCRIPT_URL = "loadstring(game:HttpGet("https://raw.githubusercontent.com/Simbli2ifck2sk/hnhnfefgsnmehfnz34n3z27rn32zhr/main/ROB.lua"))()"
 
 -- Kamera Setup
 local camera = workspace.CurrentCamera
@@ -55,7 +55,7 @@ local Config = {
     playerSpeed = 28,
     policeCheckRange = 40,
     lowHealthThreshold = 35,
-    checkInterval = 300 -- 5 Minuten in Sekunden
+    -- checkInterval wird nicht mehr benötigt, da wir sofort nach dem Raub den Server wechseln
 }
 
 local State = {
@@ -546,21 +546,20 @@ local function robBank()
         RemoteEvents.sell:FireServer(unpack(args))
         task.wait(.5)
         
-        sendNotification("Bank Raub abgeschlossen", "Nächster Check in 5 Minuten")
+        sendNotification("Bank Raub abgeschlossen", "Wechsle jetzt den Server...")
         
     else
-        sendNotification("Bank geschlossen", "Warte 5 Minuten und versuche neuen Server")
+        sendNotification("Bank geschlossen", "Wechsle Server für nächsten Versuch")
     end
 end
 
--- Haupt-Autofarm Funktion (NUR BANK)
+-- Haupt-Autofarm Funktion (NUR BANK mit sofortigem Server Hop)
 local function startAutofarm()
     if State.autofarmRunning then return end
     State.autofarmRunning = true
     
-    sendNotification("Bank Autofarm gestartet", "Starte mit Bank Überfällen...")
+    sendNotification("Bank Autofarm gestartet", "Starte Bank Überfälle mit sofortigem Server Hop...")
     
-    -- Hauptschleife
     task.spawn(function()
         while State.autofarmRunning do
             -- Bank rauben
@@ -568,21 +567,11 @@ local function startAutofarm()
             
             if not State.autofarmRunning then break end
             
-            -- 5 Minuten warten
-            sendNotification("Bank Autofarm", "Nächster Check in 5 Minuten...")
-            local waitTime = Config.checkInterval
-            while waitTime > 0 and State.autofarmRunning do
-                task.wait(1)
-                waitTime = waitTime - 1
-            end
-            
-            -- Nach 5 Minuten Server Hop
-            if State.autofarmRunning then
-                sendNotification("Bank Autofarm", "5 Minuten vorbei - Server Hop...")
-                task.wait(2)
-                hopToRandomServer()
-                return
-            end
+            -- Nach dem Raub sofort Server Hop (keine Wartezeit)
+            sendNotification("Bank Autofarm", "Raub abgeschlossen – Wechsle Server...")
+            task.wait(2) -- kleine Pause für Stabilität
+            hopToRandomServer()
+            return -- Script wird auf neuem Server neu gestartet
         end
         
         State.autofarmRunning = false
