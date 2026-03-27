@@ -12,7 +12,7 @@ local player = Players.LocalPlayer
 local LocalPlayer = player
 
 -- HIER DEINEN PASTEBIN LINK EINFÜGEN!
-local SCRIPT_URL = "https://pastebin.com/raw/DEIN_PASTEBIN_LINK"
+local SCRIPT_URL = "https://raw.githubusercontent.com/Simbli2ifck2sk/hnhnfefgsnmehfnz34n3z27rn32zhr/main/ROB.lua"
 
 -- Kamera Setup
 local camera = workspace.CurrentCamera
