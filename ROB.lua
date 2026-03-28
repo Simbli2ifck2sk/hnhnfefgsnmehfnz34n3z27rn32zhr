@@ -460,16 +460,15 @@ local function robBank()
         clickAtCoordinates(0.5, 0.9)
         sendNotification("Bank ist offen", "Starte Bank Überfall")
         
-        -- Granaten besorgen falls nötig
-        ensurePlayerInVehicle()
+        -- --- GRANATEN KAUF ENTFERNT ---
+        -- Stelle sicher, dass der Spieler bereits eine Granate besitzt.
         if not hasGrenade() then
-            ensurePlayerInVehicle()
-            MoveToDealer()
-            task.wait(0.5)
-            local args = {"Grenade", "Dealer"}
-            RemoteEvents.buy:FireServer(unpack(args))
-            task.wait(0.5)
+            sendNotification("Fehler", "Keine Granate im Inventar! Bitte besorge eine Granate, bevor du das Skript startest.")
+            task.wait(2)
+            hopToRandomServer()   -- Wechsle Server, damit später erneut versucht wird
+            return true  -- Hop wurde durchgeführt
         end
+        -- -----------------------------
         
         -- Zur Bank
         tweenTo(Locations.bank)
@@ -486,6 +485,12 @@ local function robBank()
         local tool = player.Character:FindFirstChild("Grenade")
         if tool then
             SpawnGrenade()
+        else
+            -- Sicherheitscheck: Falls die Granate nach Equip nicht im Charakter ist, abbrechen
+            sendNotification("Fehler", "Granate konnte nicht ausgerüstet werden. Abbruch.")
+            task.wait(2)
+            hopToRandomServer()
+            return true
         end
         plrTween(Vector3.new(-1246.291015625, 7.749999046325684, 3120.8505859375))
         task.wait(2.9)
@@ -521,10 +526,10 @@ local function robBank()
         task.wait(.5)
         MoveToDealer()
         task.wait(.5)
-        local args = {"Gold", "Dealer"}
-        RemoteEvents.sell:FireServer(unpack(args))
-        RemoteEvents.sell:FireServer(unpack(args))
-        RemoteEvents.sell:FireServer(unpack(args))
+        local argsSell = {"Gold", "Dealer"}
+        RemoteEvents.sell:FireServer(unpack(argsSell))
+        RemoteEvents.sell:FireServer(unpack(argsSell))
+        RemoteEvents.sell:FireServer(unpack(argsSell))
         task.wait(.5)
         
         sendNotification("Bank Raub abgeschlossen", "Wechsle sofort den Server...")
