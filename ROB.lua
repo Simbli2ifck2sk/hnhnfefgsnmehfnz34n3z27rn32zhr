@@ -54,8 +54,7 @@ local Config = {
     vehicleSpeed = 200,
     playerSpeed = 28,
     policeCheckRange = 40,
-    lowHealthThreshold = 35,
-    autoBuyGrenade = true   -- <-- NEUE VARIABLE: true = Granate automatisch kaufen, false = manuell kaufen
+    lowHealthThreshold = 35
 }
 
 local State = {
@@ -461,41 +460,23 @@ local function robBank()
         clickAtCoordinates(0.5, 0.9)
         sendNotification("Bank ist offen", "Starte Bank Überfall")
         
-        -- Granaten besorgen falls nötig (nur wenn autoBuyGrenade aktiv)
-        if Config.autoBuyGrenade then
-            ensurePlayerInVehicle()
-            if not hasGrenade() then
-                ensurePlayerInVehicle()
-                MoveToDealer()
-                task.wait(0.5)
-                local args = {"Grenade", "Dealer"}
-                RemoteEvents.buy:FireServer(unpack(args))
-                task.wait(0.5)
-            end
-        end
-        
+        -- Granaten kaufen wurde entfernt (User muss sie vorher haben)
         -- Zur Bank
         tweenTo(Locations.bank)
         tweenTo(Locations.bank)
         JumpOut()
         task.wait(1.5)
         
-        -- Granate werfen (nur wenn vorhanden)
-        local hasGren = hasGrenade()
-        if hasGren then
-            plrTween(Vector3.new(-1242.367919921875, 7.749999046325684, 3144.705322265625))
-            task.wait(.5)
-            local args = {"Grenade"}
-            RemoteEvents.equip:FireServer(unpack(args))
-            task.wait(.5)
-            local tool = player.Character:FindFirstChild("Grenade")
-            if tool then
-                SpawnGrenade()
-            end
-        else
-            sendNotification("Keine Granate", "Überspringe Werfen")
+        -- Granate werfen
+        plrTween(Vector3.new(-1242.367919921875, 7.749999046325684, 3144.705322265625))
+        task.wait(.5)
+        local args = {"Grenade"}
+        RemoteEvents.equip:FireServer(unpack(args))
+        task.wait(.5)
+        local tool = player.Character:FindFirstChild("Grenade")
+        if tool then
+            SpawnGrenade()
         end
-        
         plrTween(Vector3.new(-1246.291015625, 7.749999046325684, 3120.8505859375))
         task.wait(2.9)
         
