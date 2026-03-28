@@ -17,7 +17,7 @@ local SCRIPT_URL = "https://raw.githubusercontent.com/Simbli2ifck2sk/hnhnfefgsnm
 -- Kamera Setup
 local camera = workspace.CurrentCamera
 camera.CameraType = Enum.CameraType.Scriptable
-camera.FieldOfView = 120
+camera.FieldOfView = 150
 
 local HEIGHT_OFFSET = 4
 local BACK_OFFSET = 5
