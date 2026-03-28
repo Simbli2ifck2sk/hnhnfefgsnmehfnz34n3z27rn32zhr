@@ -17,12 +17,12 @@ local SCRIPT_URL = "https://raw.githubusercontent.com/Simbli2ifck2sk/hnhnfefgsnm
 -- Kamera Setup
 local camera = workspace.CurrentCamera
 camera.CameraType = Enum.CameraType.Scriptable
-camera.FieldOfView = 150
+camera.FieldOfView = 120   -- wieder auf Standard gesetzt, weniger Render-Last
 
 local HEIGHT_OFFSET = 4
 local BACK_OFFSET = 5
 
--- Kamera Lock
+-- Kamera Lock (kann bei Bedarf auskommentiert werden)
 local function lockCamera()
     local character = player.Character
     if character and character:FindFirstChild("HumanoidRootPart") then
@@ -170,25 +170,52 @@ local function hopToRandomServer()
     return true
 end
 
-local function isPoliceNearby()
+-- Polizei-Check mit Cooldown (nur alle 2 Sekunden)
+local lastPoliceCheck = 0
+local policeNearby = false
+local function updatePoliceNearby()
+    if tick() - lastPoliceCheck < 2 then return policeNearby end
+    lastPoliceCheck = tick()
     local policeTeam = game:GetService("Teams"):FindFirstChild("Police")
-    if not policeTeam then return false end
-    
+    if not policeTeam then
+        policeNearby = false
+        return false
+    end
     for _, plr in ipairs(Players:GetPlayers()) do
         if plr ~= player and plr.Team == policeTeam and plr.Character then
             local policeHRP = plr.Character:FindFirstChild("HumanoidRootPart")
             if policeHRP and HumanoidRootPart and (policeHRP.Position - HumanoidRootPart.Position).Magnitude <= Config.policeCheckRange then
-                sendNotification("Polizei in der Nähe", "Breche ab!")
+                policeNearby = true
                 return true
             end
         end
     end
+    policeNearby = false
     return false
+end
+
+local function isPoliceNearby()
+    return updatePoliceNearby()
 end
 
 local function isPlayerHurt()
     local humanoid = Character:FindFirstChildOfClass("Humanoid")
     return humanoid and humanoid.Health <= Config.lowHealthThreshold
+end
+
+-- Cache für MeshParts im BankRobbery-Ordner
+local cachedMeshParts = nil
+local function getBankMeshParts(folder)
+    if not folder then return {} end
+    if cachedMeshParts then return cachedMeshParts end
+    local parts = {}
+    for _, meshPart in ipairs(folder:GetDescendants()) do
+        if meshPart:IsA("MeshPart") and meshPart.Transparency == 0 then
+            table.insert(parts, meshPart)
+        end
+    end
+    cachedMeshParts = parts
+    return parts
 end
 
 local function lootVisibleMeshParts(folder)
@@ -198,8 +225,9 @@ local function lootVisibleMeshParts(folder)
         return
     end
     
-    for _, meshPart in ipairs(folder:GetDescendants()) do
-        if meshPart:IsA("MeshPart") and meshPart.Transparency == 0 and not State.collected[meshPart] then
+    local meshParts = getBankMeshParts(folder)
+    for _, meshPart in ipairs(meshParts) do
+        if not State.collected[meshPart] then
             if (meshPart.Position - HumanoidRootPart.Position).Magnitude <= Config.range then
                 State.collected[meshPart] = true
                 
@@ -460,14 +488,13 @@ local function robBank()
         clickAtCoordinates(0.5, 0.9)
         sendNotification("Bank ist offen", "Starte Bank Überfall")
         
-        -- Granaten kaufen wurde entfernt (User muss sie vorher haben)
         -- Zur Bank
         tweenTo(Locations.bank)
         tweenTo(Locations.bank)
         JumpOut()
         task.wait(1.5)
         
-        -- Granate werfen
+        -- Granate werfen (nur wenn vorhanden)
         plrTween(Vector3.new(-1242.367919921875, 7.749999046325684, 3144.705322265625))
         task.wait(.5)
         local args = {"Grenade"}
@@ -482,6 +509,7 @@ local function robBank()
         
         -- Beute einsammeln
         local bankRobberyFolder = Workspace.Robberies.BankRobbery
+        cachedMeshParts = nil -- Cache zurücksetzen, falls neue Teile erscheinen
         
         for _, position in ipairs(Locations.bankCollectPositions) do
             if isPoliceNearby() then 
@@ -499,7 +527,7 @@ local function robBank()
                     break 
                 end
                 lootVisibleMeshParts(bankRobberyFolder)
-                task.wait(0.5)
+                task.wait(0.3)   -- von 0.5 auf 0.3 reduziert, aber dennoch entlastend
             end
         end
         
@@ -520,34 +548,30 @@ local function robBank()
         sendNotification("Bank Raub abgeschlossen", "Wechsle sofort den Server...")
         task.wait(2)
         hopToRandomServer()
-        return true  -- Hop wurde durchgeführt
+        return true
         
     else
         sendNotification("Bank geschlossen", "Wechsle sofort zu einem neuen Server...")
         task.wait(2)
         hopToRandomServer()
-        return true  -- Hop wurde durchgeführt
+        return true
     end
 end
 
--- Haupt-Autofarm Funktion (NUR BANK)
+-- Haupt-Autofarm Funktion
 local function startAutofarm()
     if State.autofarmRunning then return end
     State.autofarmRunning = true
     
     sendNotification("Bank Autofarm gestartet", "Starte mit Bank Überfällen...")
     
-    -- Hauptschleife
     task.spawn(function()
         while State.autofarmRunning do
             local hopped = robBank()
             if hopped then
-                -- robBank hat bereits Server Hop ausgelöst, Schleife beenden
                 State.autofarmRunning = false
                 return
             end
-            
-            -- Falls kein Hop durchgeführt (sollte eigentlich nicht vorkommen), kurz warten und erneut versuchen
             task.wait(5)
         end
         
@@ -562,7 +586,7 @@ player.CharacterAdded:Connect(function(char)
     HumanoidRootPart = Character:WaitForChild("HumanoidRootPart")
 end)
 
--- AUTO-START: Warte 5 Sekunden (neuer Server), dann starte Autofarm
+-- AUTO-START
 task.wait(5)
 startAutofarm()
 
