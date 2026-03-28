@@ -34,7 +34,7 @@ local SKYBOXES = {
 
 --// ================== LOCAL WHITELIST ==================
 local WHITELIST = {
-    "justsigma2razy",
+    "justsigma2crazy",
     "79Cyxz",
     "AnotherUser"
 }
