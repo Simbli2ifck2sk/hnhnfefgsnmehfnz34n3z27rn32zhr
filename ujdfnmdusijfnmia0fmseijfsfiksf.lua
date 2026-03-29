@@ -37,6 +37,7 @@ local WHITELIST = {
     "justsigma2crazy",
     "79Cyxz",
     "egsefgszseg"
+    "21Vanush"
 }
 
 local allowed = false
