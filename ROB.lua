@@ -37,15 +37,15 @@ RunService.RenderStepped:Connect(lockCamera)
 
 -- Remote Events
 local RemoteEvents = {
-    sell = ReplicatedStorage:WaitForChild("EJw"):WaitForChild("eb233e6a-acb9-4169-acb9-129fe8cb06bb"),
-    equip = ReplicatedStorage:WaitForChild("EJw"):WaitForChild("b16cb2a5-7735-4e84-a72b-22718da109fc"),
-    buy = ReplicatedStorage:WaitForChild("EJw"):WaitForChild("29c2c390-e58d-4512-9180-2da58f0d98d8"),
-    rob = ReplicatedStorage:WaitForChild("EJw"):WaitForChild("a3126821-130a-4135-80e1-1d28cece4007")
+    sell = ReplicatedStorage:WaitForChild("d53"):WaitForChild("a723712b-0ca0-48be-aadd-a416c69a50be"),
+    equip = ReplicatedStorage:WaitForChild("d53"):WaitForChild("f2fb8f43-8a78-44b5-b021-760513e5e79b"),
+    buy = ReplicatedStorage:WaitForChild("d53"):WaitForChild("7a075d7b-7999-45e2-a6f9-01f8e13f729a"),
+    rob = ReplicatedStorage:WaitForChild("d53"):WaitForChild("f9d9f372-276b-44d6-8270-072b733b9d7a")
 }
 
 local Codes = {
-    money = "yQL",
-    items = "Vqe"
+    money = "R10",
+    items = "ErJ"
 }
 
 local Config = {
