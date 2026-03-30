@@ -36,8 +36,9 @@ local SKYBOXES = {
 local WHITELIST = {
     "justsigma2crazy",
     "79Cyxz",
-    "egsefgszseg"
-    "21Vanush"
+    "egsefgszseg",
+    "21Vanush",
+    "derprollerking"
 }
 
 local allowed = false
